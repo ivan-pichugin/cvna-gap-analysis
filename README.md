@@ -1,84 +1,72 @@
-# Gap-Up Analysis: CVNA (2019–2025)
+# CVNA Gap-Up Research (2019–2024)
 
-![Dashboard](/CVNA_dashboard.png)
+Exploratory SQL/Tableau analysis of positive gap-up events in CVNA daily
+price data. The goal was to test whether gap formation follows any
+structural pattern (frequency by year, size distribution) before
+committing to a full backtest of a gap-trading strategy.
 
-## Project Objective
-The objective of this project is to identify and analyze **positive gap-up events** in CVNA stock over the period from 2019 to 2024 and to determine whether gap formation exhibits **predictable patterns or structural regularities**.
+![Dashboard](CVNA_dashboard.png)
 
-The analysis is based exclusively on **daily OHLC price data** and is intentionally indicator-free to focus purely on price behavior.
+## Status
 
----
+**Exploratory phase complete. Forward-return / edge testing not yet
+implemented** — see [Next Steps](#next-steps). Numbers below describe
+what this stage of the analysis supports, not a validated trading edge.
 
-## Data Overview
-The dataset contains daily price data for CVNA, including:
-- Open
-- High
-- Low
-- Close
+## Data
 
-Each record represents one trading day.  
-The data spans from 2019 through 2024.
+- Source: daily OHLC bars for CVNA, 2017–2025 (`CVNA.csv`)
+- Analysis window: 2019-01-01 to 2024-12-31
+- No indicators used — raw price action only
 
----
+## Method
 
-## Methodology
+A gap-up day is defined as:
 
-### Gap Detection
-A **gap-up** is defined as a trading day where the opening price exceeds the previous day’s closing price by a positive percentage threshold.
+```
+gap_pct = (open_t - close_{t-1}) / close_{t-1}
+```
 
-Only positive gaps were considered for this analysis.
+using `LAG()` over the ticker-partitioned, date-ordered series. Only
+gap_pct >= 3% is treated as a "gap" for counting purposes; all gaps are
+additionally bucketed into 3–5%, 5–7%, 7–10%, >10%.
 
----
+## SQL
 
-## Exploratory Analysis
+All queries read from a single base view instead of repeating the CTE:
 
-**Observations:**
-- Gap-up events are not evenly distributed over time
-- Gaps tend to cluster during specific periods
-- Years with elevated market volatility show a significantly higher number of gaps
-- During stable price regimes, gap formation becomes rare
+| File | Purpose |
+|---|---|
+| `00_gaps_base_view.sql` | Base view: daily gap_pct + bucket, 2019–2024 |
+| `01_gaps_3pct.sql` | All gap-up days (>=3%), full detail |
+| `02_num_gaps_by_year.sql` | Gap count per calendar year |
+| `03_gap_count_by_bucket.sql` | Gap count per size bucket |
 
-This indicates that gap formation is **regime-dependent**, rather than a constant market feature.
+Run `00_gaps_base_view.sql` once to create the view, then the rest can
+be run independently.
 
----
+## Findings (exploratory only)
 
-## Gap Size Distribution
+- Gap-up frequency is not stable across years — it clusters in
+  higher-volatility periods and is rare in calm regimes.
+- Gap size distribution is skewed toward the 3–5% bucket; large gaps
+  (>10%) are infrequent.
+- No claim is made here about whether gaps are *tradable* — this stage
+  only characterizes *when* and *how often* they occur.
 
-### Gap Buckets
-All gap-up events were grouped into the following buckets:
-- 3–5%
-- 5–7%
-- 7–10%
-- >10%
+## Dashboard
 
-These buckets were then visualized on the price chart to assess whether gap size follows any structural pattern.
-
----
-
-## Interim Conclusions
-Based on the exploratory analysis:
-
-- Gap-up events tend to occur during periods of elevated volatility
-- Gap formation is not random and depends strongly on market regime
-- Gap size alone does not exhibit a strong standalone pattern
-- Moderate gaps (3–5%) dominate the overall population
-
-These findings justify further analysis of **post-gap price behavior**.
-
----
+Built in Tableau (`CVNA_dash.twb`). Requires Tableau Desktop/Reader to
+open interactively; a static screenshot is embedded above for anyone
+without Tableau.
 
 ## Next Steps
-The next phase of the project focuses on evaluating whether gap-up events offer a tradable edge.
 
-Planned analysis:
-- Calculation of forward returns at +2, +5, and +10 trading days
-- Performance comparison across gap size buckets
-- Assessment of statistical significance and robustness
+- Forward returns at +2, +5, +10 trading days after each gap-up
+- Compare forward returns across gap-size buckets
+- Basic significance check (vs. random-day baseline) before drawing any
+  conclusion about edge
 
----
+## Tools
 
-## Tools Used
-- SQL
-- Tableau
-
-
+SQL (window functions, views), Tableau
